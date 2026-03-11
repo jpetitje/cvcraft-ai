@@ -360,6 +360,14 @@
   // GENERATE GATE
   // ============================================================
   function handleGenerate(type) {
+    // Vérification : au moins le champ principal doit être rempli
+    const mainField = type === 'cv'
+      ? document.getElementById('cv-poste').value.trim()
+      : document.getElementById('l-poste').value.trim();
+    if (!mainField) {
+      showToast('⚠️ Remplis au moins le champ "Poste visé" avant de générer');
+      return;
+    }
     if (!currentUser) {
       pendingType = type;
       document.getElementById('authModal').classList.add('visible');
