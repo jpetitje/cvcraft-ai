@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CVcraft AI — Générateur de CV & Lettres</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     ÉTAPE 2 — FIREBASE : colle ici les scripts SDK
+     (tu les trouveras dans Firebase Console > ton projet > </> Web app)
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script>
+  // ============================================================
+  // ÉTAPE 2 — FIREBASE CONFIG
+  // Remplace les valeurs ci-dessous par ta config Firebase
+  // Firebase Console > ton projet > ⚙️ Paramètres > Tes applications > Config
+  // ============================================================
+  const firebaseConfig = {
+    apiKey:            "COLLE_TON_API_KEY_ICI",
+    authDomain:        "COLLE_TON_AUTH_DOMAIN_ICI",       // ex: cvcraft-ai.firebaseapp.com
+    projectId:         "COLLE_TON_PROJECT_ID_ICI",        // ex: cvcraft-ai
+    storageBucket:     "COLLE_TON_STORAGE_BUCKET_ICI",
+    messagingSenderId: "COLLE_TON_MESSAGING_SENDER_ID_ICI",
+    appId:             "COLLE_TON_APP_ID_ICI"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db   = firebase.firestore();
+  const auth = firebase.auth();
+</script>
+
+<style>
+  :root {
+    --ink: #1a1208;
+    --cream: #f5f0e8;
+    --warm: #f0e6d3;
+    --gold: #c8922a;
+    --gold-light: #e8b84b;
+    --rust: #b85c38;
+    --shadow: rgba(26,18,8,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+
+  header { background: var(--ink); color: var(--cream); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; letter-spacing: -0.02em; }
+  .logo span { color: var(--gold); font-style: italic; }
+  .header-right { display: flex; align-items: center; gap: 0.75rem; }
+  .user-pill { display: none; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.08); border-radius: 2rem; padding: 0.35rem 0.85rem 0.35rem 0.5rem; font-size: 0.8rem; }
+  .user-pill.visible { display: flex; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; }
+  .credits-badge { background: var(--gold); color: var(--ink); font-size: 0.75rem; font-weight: 500; padding: 0.35rem 0.85rem; border-radius: 2rem; cursor: pointer; transition: background 0.2s; }
+  .credits-badge:hover { background: var(--gold-light); }
+
+  .hero { text-align: center; padding: 4rem 2rem 2rem; background: linear-gradient(180deg, var(--ink) 0%, var(--ink) 55%, var(--cream) 55%); }
+  .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem,5vw,3.5rem); color: var(--cream); line-height: 1.15; max-width: 700px; margin: 0 auto 1rem; }
+  .hero h1 em { color: var(--gold); font-style: italic; }
+  .hero p { color: rgba(245,240,232,0.65); font-size: 1rem; max-width: 480px; margin: 0 auto 2.5rem; }
+
+  .card { background: #fff; border: 1px solid rgba(200,146,42,0.2); border-radius: 1rem; box-shadow: 0 8px 40px var(--shadow); padding: 2rem; max-width: 780px; margin: 0 auto; }
+  .tabs { display: flex; background: var(--warm); border-radius: 0.6rem; padding: 0.3rem; margin-bottom: 1.75rem; }
+  .tab-btn { flex: 1; padding: 0.6rem; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500; color: rgba(26,18,8,0.5); border-radius: 0.4rem; cursor: pointer; transition: all 0.2s; }
+  .tab-btn.active { background: var(--ink); color: var(--cream); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(26,18,8,0.5); }
+  input, textarea { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; padding: 0.7rem 0.9rem; border: 1.5px solid rgba(26,18,8,0.12); border-radius: 0.5rem; background: var(--cream); color: var(--ink); transition: border-color 0.2s; outline: none; resize: none; }
+  input:focus, textarea:focus { border-color: var(--gold); }
+  textarea { min-height: 100px; }
+  .tone-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .tone-chip { padding: 0.4rem 0.9rem; border: 1.5px solid rgba(26,18,8,0.15); border-radius: 2rem; font-size: 0.8rem; cursor: pointer; background: transparent; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .tone-chip.selected { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+
+  .generate-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: var(--gold); color: var(--ink); border: none; border-radius: 0.6rem; font-family: 'Playfair Display', serif; font-size: 1.1rem; font-style: italic; cursor: pointer; transition: all 0.2s; }
+  .generate-btn:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(200,146,42,0.35); }
+  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .output-section { margin-top: 2rem; display: none; }
+  .output-section.visible { display: block; }
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+  .output-label { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(26,18,8,0.4); }
+  .copy-btn { font-size: 0.8rem; padding: 0.35rem 0.8rem; border: 1px solid rgba(26,18,8,0.15); background: transparent; border-radius: 0.4rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .copy-btn:hover { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .output-box { background: var(--cream); border: 1.5px solid rgba(200,146,42,0.25); border-radius: 0.6rem; padding: 1.25rem; font-size: 0.9rem; line-height: 1.75; white-space: pre-wrap; min-height: 80px; }
+
+  .loading-dots span { display: inline-block; width: 6px; height: 6px; background: var(--ink); border-radius: 50%; margin: 0 2px; animation: bounce 1.2s infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)} }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,8,0.72); backdrop-filter: blur(5px); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.visible { display: flex; }
+  .auth-card { background: #fff; border-radius: 1.25rem; padding: 2.5rem 2rem; max-width: 400px; width: 90%; text-align: center; border-top: 5px solid var(--gold); animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
+  .auth-icon { font-size: 2.2rem; margin-bottom: 0.75rem; }
+  .auth-card h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 0.4rem; }
+  .auth-sub { color: rgba(26,18,8,0.5); font-size: 0.875rem; margin-bottom: 1.75rem; line-height: 1.5; }
+  .google-btn { width: 100%; padding: 0.8rem 1rem; background: #fff; border: 1.5px solid rgba(26,18,8,0.18); border-radius: 0.6rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.6rem; transition: all 0.2s; margin-bottom: 0.75rem; }
+  .google-btn:hover { border-color: var(--gold); background: rgba(200,146,42,0.04); }
+  .divider { display: flex; align-items: center; gap: 0.75rem; margin: 0.75rem 0; color: rgba(26,18,8,0.3); font-size: 0.8rem; }
+  .divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(26,18,8,0.1); }
+  .auth-input { width: 100%; padding: 0.75rem 0.9rem; border: 1.5px solid rgba(26,18,8,0.15); border-radius: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; background: var(--cream); outline: none; margin-bottom: 0.6rem; transition: border-color 0.2s; }
+  .auth-input:focus { border-color: var(--gold); }
+  .auth-submit-btn { width: 100%; padding: 0.8rem; background: var(--ink); color: var(--cream); border: none; border-radius: 0.6rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .auth-submit-btn:hover { background: var(--rust); }
+  .auth-note { font-size: 0.72rem; color: rgba(26,18,8,0.35); margin-top: 1rem; line-height: 1.5; }
+  .auth-error { color: var(--rust); font-size: 0.8rem; margin-top: 0.5rem; display: none; }
+  .auth-error.visible { display: block; }
+
+  .paywall-card { background: #fff; border-radius: 1.25rem; padding: 2.5rem 2rem; max-width: 420px; width: 90%; text-align: center; border-top: 5px solid var(--rust); animation: slideUp 0.25s ease; }
+  .paywall-card h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 0.5rem; }
+  .paywall-sub { color: rgba(26,18,8,0.5); font-size: 0.875rem; margin-bottom: 0.5rem; line-height: 1.5; }
+  .user-email-tag { display: inline-block; background: rgba(200,146,42,0.12); color: var(--gold); border-radius: 2rem; padding: 0.2rem 0.75rem; font-size: 0.8rem; font-weight: 500; margin-bottom: 1.5rem; }
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .price-card { border: 2px solid rgba(26,18,8,0.1); border-radius: 0.75rem; padding: 1rem 0.75rem; cursor: pointer; transition: all 0.2s; position: relative; }
+  .price-card:hover,.price-card.recommended { border-color: var(--gold); background: rgba(200,146,42,0.06); }
+  .badge-rec { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--gold); color: var(--ink); font-size: 0.65rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 1rem; text-transform: uppercase; white-space: nowrap; }
+  .price-amount { font-size: 1.5rem; font-weight: 700; }
+  .price-amount small { font-size: 0.8rem; font-weight: 400; }
+  .price-desc { font-size: 0.75rem; color: rgba(26,18,8,0.5); margin-top: 0.2rem; }
+  .pay-btn { width: 100%; padding: 0.9rem; background: var(--ink); color: var(--cream); border: none; border-radius: 0.6rem; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.2s; margin-bottom: 0.75rem; }
+  .pay-btn:hover { background: var(--rust); }
+  .paywall-close { font-size: 0.8rem; color: rgba(26,18,8,0.35); cursor: pointer; text-decoration: underline; }
+  .paywall-close:hover { color: var(--ink); }
+
+  .social-proof { max-width: 780px; margin: 2.5rem auto; padding: 0 1rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+  .proof-item { text-align: center; }
+  .proof-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--gold); }
+  .proof-label { font-size: 0.8rem; color: rgba(26,18,8,0.5); }
+
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--ink); color: var(--cream); padding: 0.75rem 1.5rem; border-radius: 2rem; font-size: 0.85rem; z-index: 500; transition: transform 0.3s ease; pointer-events: none; border-left: 3px solid var(--gold); white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  footer { text-align: center; padding: 2rem; font-size: 0.75rem; color: rgba(26,18,8,0.35); border-top: 1px solid rgba(26,18,8,0.08); margin-top: 3rem; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .hero { padding: 2.5rem 1rem 1.5rem; } .card { padding: 1.25rem; } .price-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CV<span>craft</span> AI</div>
+  <div class="header-right">
+    <div class="user-pill" id="userPill">
+      <div class="avatar" id="userAvatar"></div>
+      <span id="userNameShort"></span>
+    </div>
+    <div class="credits-badge" id="creditsDisplay">✦ 2 essais gratuits</div>
+  </div>
+</header>
+
+<div class="hero">
+  <h1>Votre document parfait,<br><em>en 10 secondes.</em></h1>
+  <p>CV professionnel ou lettre de motivation, générés par IA et personnalisés pour chaque offre.</p>
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('cv')">📄 CV professionnel</button>
+    <button class="tab-btn" onclick="switchTab('lettre')">✉️ Lettre de motivation</button>
+  </div>
+
+  <div id="form-cv">
+    <div class="form-grid">
+      <div class="form-group"><label>Prénom & Nom</label><input type="text" id="cv-name" placeholder="ex. Marie Dupont"></div>
+      <div class="form-group"><label>Poste visé</label><input type="text" id="cv-poste" placeholder="ex. Chef de projet ONG"></div>
+      <div class="form-group full"><label>Expériences clés</label><textarea id="cv-exp" placeholder="ex. 10 ans gestion de projets formation professionnelle en Afrique centrale, coordination UNICEF/USAID..."></textarea></div>
+      <div class="form-group full"><label>Compétences principales</label><input type="text" id="cv-skills" placeholder="ex. Gestion de projet, formation, insertion pro, partenariats ONG"></div>
+      <div class="form-group full"><label>Ton</label>
+        <div class="tone-row" id="tone-cv">
+          <button class="tone-chip selected" onclick="selectTone('cv','Professionnel')">Professionnel</button>
+          <button class="tone-chip" onclick="selectTone('cv','Dynamique')">Dynamique</button>
+          <button class="tone-chip" onclick="selectTone('cv','Expert')">Expert</button>
+          <button class="tone-chip" onclick="selectTone('cv','Sobre')">Sobre</button>
+        </div>
+      </div>
+    </div>
+    <button class="generate-btn" onclick="handleGenerate('cv')">✦ Générer mon CV</button>
+  </div>
+
+  <div id="form-lettre" style="display:none;">
+    <div class="form-grid">
+      <div class="form-group"><label>Votre prénom & nom</label><input type="text" id="l-name" placeholder="ex. Julien Martin"></div>
+      <div class="form-group"><label>Poste candidaté</label><input type="text" id="l-poste" placeholder="ex. Chef de Mission"></div>
+      <div class="form-group"><label>Organisation</label><input type="text" id="l-org" placeholder="ex. La Chaîne de l'Espoir"></div>
+      <div class="form-group"><label>Pays / Contexte</label><input type="text" id="l-pays" placeholder="ex. Côte d'Ivoire"></div>
+      <div class="form-group full"><label>Vos atouts clés pour CE poste</label><textarea id="l-atouts" placeholder="ex. 10 ans terrain Afrique centrale, réseau ONG Congo, coordination multi-bailleurs..."></textarea></div>
+      <div class="form-group full"><label>Ton</label>
+        <div class="tone-row" id="tone-lettre">
+          <button class="tone-chip selected" onclick="selectTone('lettre','Engagé')">Engagé</button>
+          <button class="tone-chip" onclick="selectTone('lettre','Formel')">Formel</button>
+          <button class="tone-chip" onclick="selectTone('lettre','Percutant')">Percutant</button>
+          <button class="tone-chip" onclick="selectTone('lettre','Chaleureux')">Chaleureux</button>
+        </div>
+      </div>
+    </div>
+    <button class="generate-btn" onclick="handleGenerate('lettre')">✦ Générer ma lettre</button>
+  </div>
+
+  <div class="output-section" id="output-section">
+    <div class="output-header">
+      <span class="output-label">Résultat généré</span>
+      <button class="copy-btn" onclick="copyOutput()">Copier ↗</button>
+    </div>
+    <div class="output-box" id="output-box"></div>
+  </div>
+</div>
+
+<div class="social-proof">
+  <div class="proof-item"><div class="proof-num">4 800+</div><div class="proof-label">documents créés</div></div>
+  <div class="proof-item"><div class="proof-num">93%</div><div class="proof-label">taux de satisfaction</div></div>
+  <div class="proof-item"><div class="proof-num">12 sec</div><div class="proof-label">temps moyen</div></div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal">
+  <div class="auth-card">
+    <div class="auth-icon">✦</div>
+    <h2>Accès gratuit</h2>
+    <p class="auth-sub">Créez un compte pour accéder à vos <strong>2 générations gratuites</strong>.<br>Aucune carte bancaire requise.</p>
+    <button class="google-btn" onclick="loginWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 19 13 24 13c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.2C29.3 35.3 26.8 36 24 36c-5.3 0-9.7-2.9-11.3-7H6.3C9.7 35.7 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.7l6.2 5.2C40.9 35.4 44 30.1 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+      Continuer avec Google
+    </button>
+    <div class="divider">ou avec votre email</div>
+    <input class="auth-input" type="text" id="authName" placeholder="Votre prénom">
+    <input class="auth-input" type="email" id="authEmail" placeholder="votre@email.com" onkeydown="if(event.key==='Enter')loginWithEmail()">
+    <div class="auth-error" id="authError"></div>
+    <button class="auth-submit-btn" onclick="loginWithEmail()">Continuer →</button>
+    <p class="auth-note">🔒 Pas de spam. Vous recevrez uniquement vos résultats et, si vos essais sont épuisés, une offre Pro. Désinscription en 1 clic.</p>
+  </div>
+</div>
+
+<!-- PAYWALL MODAL -->
+<div class="modal-overlay" id="paywallModal">
+  <div class="paywall-card">
+    <h2>Vos 2 essais sont épuisés 🎯</h2>
+    <p class="paywall-sub">Compte identifié :</p>
+    <div class="user-email-tag" id="paywallEmail"></div>
+    <p class="paywall-sub" style="margin-bottom:1.5rem;">Passez Pro pour continuer à générer des documents qui font la différence.</p>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="price-amount">4,90<small>€</small></div>
+        <div class="price-desc">5 générations</div>
+      </div>
+      <div class="price-card recommended">
+        <div class="badge-rec">⭐ Populaire</div>
+        <div class="price-amount">9,90<small>€</small></div>
+        <div class="price-desc">Illimité 30 jours</div>
+      </div>
+    </div>
+    <!-- ============================================================
+         ÉTAPE 4 — STRIPE
+         Remplace le href="#" par ton lien Stripe Payment Link
+         ex: https://buy.stripe.com/test_XXXX
+         ============================================================ -->
+    <button class="pay-btn" onclick="window.location.href='COLLE_TON_LIEN_STRIPE_ICI'">→ Passer Pro — 9,90€ / mois</button>
+    <div class="paywall-close" onclick="closePaywall()">Pas maintenant</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  CVcraft AI — Propulsé par Claude · Confidentialité · CGU
+</footer>
+
+<script>
+  // ============================================================
+  // ÉTAT GLOBAL
+  // ============================================================
+  let currentTab = 'cv';
+  let tones = { cv: 'Professionnel', lettre: 'Engagé' };
+  let currentUser = null;
+  let pendingType = null;
+
+  // ============================================================
+  // AUTH — Firebase réelle
+  // ============================================================
+
+  // Détecte si l'utilisateur est déjà connecté au chargement
+  auth.onAuthStateChanged(async (firebaseUser) => {
+    if (firebaseUser) {
+      const doc = await db.collection('users').doc(firebaseUser.uid).get();
+      if (doc.exists) {
+        applyUser({ ...doc.data(), uid: firebaseUser.uid });
+      }
+    }
+  });
+
+  async function loginWithGoogle() {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const result   = await auth.signInWithPopup(provider);
+      await handleFirebaseUser(result.user, result.user.displayName);
+    } catch(e) {
+      showError(e.message);
+    }
+  }
+
+  async function loginWithEmail() {
+    const email = document.getElementById('authEmail').value.trim();
+    const name  = document.getElementById('authName').value.trim() || email.split('@')[0];
+    if (!email.includes('@')) { showError('Email invalide'); return; }
+
+    // Mot de passe auto-généré — l'utilisateur n'en a pas besoin (magic link en prod)
+    const pwd = 'cvcraft_' + btoa(email).slice(0,12);
+    try {
+      // Essaie de créer le compte
+      const result = await auth.createUserWithEmailAndPassword(email, pwd);
+      await handleFirebaseUser(result.user, name);
+    } catch(e) {
+      if (e.code === 'auth/email-already-in-use') {
+        // Compte existant → connexion
+        try {
+          const result = await auth.signInWithEmailAndPassword(email, pwd);
+          const doc    = await db.collection('users').doc(result.user.uid).get();
+          applyUser({ ...doc.data(), uid: result.user.uid });
+          document.getElementById('authModal').classList.remove('visible');
+          showToast('✓ Reconnecté — ' + (doc.data().credits || 0) + ' essai(s) restant(s)');
+          if (pendingType && doc.data().credits > 0) { setTimeout(() => generate(pendingType), 350); pendingType = null; }
+        } catch(e2) { showError('Erreur de connexion : ' + e2.message); }
+      } else { showError(e.message); }
+    }
+  }
+
+  async function handleFirebaseUser(firebaseUser, name) {
+    const ref = db.collection('users').doc(firebaseUser.uid);
+    const doc = await ref.get();
+    let userData;
+    if (!doc.exists) {
+      userData = { email: firebaseUser.email, name: name || firebaseUser.email.split('@')[0], credits: 2, createdAt: new Date() };
+      await ref.set(userData);
+      // ============================================================
+      // ÉTAPE 3 — BREVO : décommente et adapte pour l'email de bienvenue
+      // await sendBrevoEmail(firebaseUser.email, name, 'TEMPLATE_ID_BIENVENUE');
+      // ============================================================
+    } else {
+      userData = doc.data();
+    }
+    applyUser({ ...userData, uid: firebaseUser.uid });
+    document.getElementById('authModal').classList.remove('visible');
+    showToast('✓ Connecté — ' + userData.credits + ' essai(s) gratuit(s) disponible(s)');
+    if (pendingType && userData.credits > 0) { setTimeout(() => generate(pendingType), 350); pendingType = null; }
+  }
+
+  function applyUser(u) {
+    currentUser = u;
+    document.getElementById('userPill').classList.add('visible');
+    document.getElementById('userAvatar').textContent = (u.name || u.email).charAt(0).toUpperCase();
+    document.getElementById('userNameShort').textContent = u.name || u.email.split('@')[0];
+    updateCreditsDisplay();
+  }
+
+  // ============================================================
+  // GENERATE GATE
+  // ============================================================
+  function handleGenerate(type) {
+    if (!currentUser) {
+      pendingType = type;
+      document.getElementById('authModal').classList.add('visible');
+      return;
+    }
+    if (currentUser.credits <= 0) {
+      document.getElementById('paywallEmail').textContent = currentUser.email;
+      document.getElementById('paywallModal').classList.add('visible');
+      return;
+    }
+    generate(type);
+  }
+
+  async function generate(type) {
+    const btn = document.querySelector('#form-' + type + ' .generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
+    const out = document.getElementById('output-section');
+    const box = document.getElementById('output-box');
+    out.classList.add('visible');
+    box.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
+
+    let prompt = '';
+    if (type === 'cv') {
+      const name   = document.getElementById('cv-name').value  || 'Candidat';
+      const poste  = document.getElementById('cv-poste').value || 'Professionnel';
+      const exp    = document.getElementById('cv-exp').value   || 'Expérience internationale';
+      const skills = document.getElementById('cv-skills').value|| '';
+      prompt = `Tu es expert en rédaction de CV pour le secteur ONG/développement international. Génère : (1) une accroche de profil percutante (4-5 lignes, ton ${tones.cv}), (2) 5 bullets de compétences clés. Données — Nom: ${name} | Poste: ${poste} | Exp: ${exp} | Compétences: ${skills}. Réponds directement en français.`;
+    } else {
+      const name   = document.getElementById('l-name').value  || 'Candidat';
+      const poste  = document.getElementById('l-poste').value || 'Chef de Mission';
+      const org    = document.getElementById('l-org').value   || "l'organisation";
+      const pays   = document.getElementById('l-pays').value  || '';
+      const atouts = document.getElementById('l-atouts').value|| 'Expérience terrain';
+      prompt = `Tu es expert en lettres de motivation pour le secteur humanitaire. Génère une lettre complète (ton ${tones.lettre}) : objet en tête, 3 paragraphes (accroche → valeur ajoutée → conclusion), formule de politesse. Données — ${name} | Poste: ${poste} | Org: ${org} | Pays: ${pays} | Atouts: ${atouts}. Réponds directement en français.`;
+    }
+
+    try {
+      const res  = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role:"user", content: prompt }] })
+      });
+      const data = await res.json();
+      box.textContent = data.content?.[0]?.text || "Erreur lors de la génération.";
+
+      // Décrémenter en base Firestore
+      currentUser.credits--;
+      await db.collection('users').doc(currentUser.uid).update({ credits: currentUser.credits });
+      updateCreditsDisplay();
+
+      if (currentUser.credits === 0) {
+        setTimeout(() => showToast('💡 Essais épuisés — passez Pro pour continuer'), 1500);
+        // ============================================================
+        // ÉTAPE 3 — BREVO : email de relance automatique
+        // await sendBrevoEmail(currentUser.email, currentUser.name, 'TEMPLATE_ID_RELANCE');
+        // ============================================================
+      }
+    } catch(e) {
+      box.textContent = "Erreur réseau. Vérifiez votre connexion.";
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = type === 'cv' ? '✦ Générer mon CV' : '✦ Générer ma lettre';
+  }
+
+  // ============================================================
+  // ÉTAPE 3 — BREVO (décommenter quand prêt)
+  // Nécessite une Vercel Function /api/send-email.js côté serveur
+  // ============================================================
+  // async function sendBrevoEmail(email, name, templateId) {
+  //   await fetch('/api/send-email', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ email, name, templateId })
+  //   });
+  // }
+
+  // ============================================================
+  // UI HELPERS
+  // ============================================================
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===0 ? tab==='cv' : tab==='lettre'));
+    document.getElementById('form-cv').style.display     = tab==='cv'     ? 'block' : 'none';
+    document.getElementById('form-lettre').style.display = tab==='lettre' ? 'block' : 'none';
+    document.getElementById('output-section').classList.remove('visible');
+  }
+
+  function selectTone(type, tone) {
+    tones[type] = tone;
+    document.querySelectorAll('#tone-' + type + ' .tone-chip').forEach(c => c.classList.toggle('selected', c.textContent === tone));
+  }
+
+  function updateCreditsDisplay() {
+    const el = document.getElementById('creditsDisplay');
+    const c  = currentUser?.credits ?? 2;
+    if (c > 0) {
+      el.textContent = '✦ ' + c + ' essai' + (c>1?'s':'') + ' gratuit' + (c>1?'s':'');
+      el.style.background = 'var(--gold)'; el.onclick = null;
+    } else {
+      el.textContent = '🔒 Passer Pro';
+      el.style.background = 'var(--rust)';
+      el.onclick = () => { document.getElementById('paywallEmail').textContent = currentUser.email; document.getElementById('paywallModal').classList.add('visible'); };
+    }
+  }
+
+  function copyOutput() {
+    navigator.clipboard.writeText(document.getElementById('output-box').textContent).then(() => {
+      const b = document.querySelector('.copy-btn'); b.textContent = '✓ Copié !';
+      setTimeout(() => b.textContent = 'Copier ↗', 2000);
+    });
+  }
+
+  function closePaywall() { document.getElementById('paywallModal').classList.remove('visible'); }
+
+  function showError(msg) {
+    const el = document.getElementById('authError');
+    el.textContent = '⚠️ ' + msg; el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 4000);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>
