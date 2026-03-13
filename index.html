@@ -167,9 +167,10 @@
   <div id="form-cv">
     <div class="form-grid">
       <div class="form-group"><label>Prénom & Nom</label><input type="text" id="cv-name" placeholder="ex. Marie Dupont"></div>
-      <div class="form-group"><label>Poste visé</label><input type="text" id="cv-poste" placeholder="ex. Chef de projet ONG"></div>
-      <div class="form-group full"><label>Expériences clés</label><textarea id="cv-exp" placeholder="ex. 10 ans gestion de projets formation professionnelle en Afrique centrale, coordination UNICEF/USAID..."></textarea></div>
-      <div class="form-group full"><label>Compétences principales</label><input type="text" id="cv-skills" placeholder="ex. Gestion de projet, formation, insertion pro, partenariats ONG"></div>
+      <div class="form-group"><label>Poste visé</label><input type="text" id="cv-poste" placeholder="ex. Responsable marketing, Ingénieur logiciel, Commercial B2B..."></div>
+      <div class="form-group full"><label>Descriptif du poste visé <span style="font-weight:400;opacity:0.6">(optionnel mais recommandé)</span></label><textarea id="cv-desc" placeholder="Colle ici l'annonce ou décris le poste : missions, compétences requises, secteur... L'IA adaptera le CV en conséquence."></textarea></div>
+      <div class="form-group full"><label>Expériences clés</label><textarea id="cv-exp" placeholder="ex. 5 ans gestion de projets dans le secteur tech, management d'une équipe de 8 personnes, lancement de 3 produits SaaS..."></textarea></div>
+      <div class="form-group full"><label>Compétences principales</label><input type="text" id="cv-skills" placeholder="ex. Management, Excel, CRM, communication, gestion budgétaire, négociation..."></div>
       <div class="form-group full"><label>Ton</label>
         <div class="tone-row" id="tone-cv">
           <button class="tone-chip selected" onclick="selectTone('cv','Professionnel')">Professionnel</button>
@@ -185,10 +186,11 @@
   <div id="form-lettre" style="display:none;">
     <div class="form-grid">
       <div class="form-group"><label>Votre prénom & nom</label><input type="text" id="l-name" placeholder="ex. Julien Martin"></div>
-      <div class="form-group"><label>Poste candidaté</label><input type="text" id="l-poste" placeholder="ex. Chef de Mission"></div>
-      <div class="form-group"><label>Organisation</label><input type="text" id="l-org" placeholder="ex. La Chaîne de l'Espoir"></div>
-      <div class="form-group"><label>Pays / Contexte</label><input type="text" id="l-pays" placeholder="ex. Côte d'Ivoire"></div>
-      <div class="form-group full"><label>Vos atouts clés pour CE poste</label><textarea id="l-atouts" placeholder="ex. 10 ans terrain Afrique centrale, réseau ONG Congo, coordination multi-bailleurs..."></textarea></div>
+      <div class="form-group"><label>Poste candidaté</label><input type="text" id="l-poste" placeholder="ex. Responsable commercial, Directeur marketing, Chef de projet..."></div>
+      <div class="form-group"><label>Organisation</label><input type="text" id="l-org" placeholder="ex. Google, Cabinet Martin & Associés, Startup XYZ..."></div>
+      <div class="form-group"><label>Pays / Contexte</label><input type="text" id="l-pays" placeholder="ex. Paris, télétravail, secteur bancaire..."></div>
+      <div class="form-group full"><label>Descriptif du poste <span style="font-weight:400;opacity:0.6">(optionnel mais recommandé)</span></label><textarea id="l-desc" placeholder="Colle ici l'annonce ou les missions clés du poste. L'IA personnalisera la lettre en conséquence."></textarea></div>
+      <div class="form-group full"><label>Vos atouts clés pour CE poste</label><textarea id="l-atouts" placeholder="ex. 7 ans d'expérience en développement commercial, portfolio de 50 clients grands comptes, maîtrise des outils CRM..."></textarea></div>
       <div class="form-group full"><label>Ton</label>
         <div class="tone-row" id="tone-lettre">
           <button class="tone-chip selected" onclick="selectTone('lettre','Engagé')">Engagé</button>
@@ -396,14 +398,20 @@
       const poste  = document.getElementById('cv-poste').value || 'Professionnel';
       const exp    = document.getElementById('cv-exp').value   || 'Expérience internationale';
       const skills = document.getElementById('cv-skills').value|| '';
-      prompt = `Tu es expert en rédaction de CV pour le secteur ONG/développement international. Génère : (1) une accroche de profil percutante (4-5 lignes, ton ${tones.cv}), (2) 5 bullets de compétences clés. Données — Nom: ${name} | Poste: ${poste} | Exp: ${exp} | Compétences: ${skills}. Réponds directement en français.`;
+      const desc   = document.getElementById('cv-desc').value  || '';
+      prompt = `Tu es expert en rédaction de CV tous secteurs confondus. Génère : (1) une accroche de profil percutante (4-5 lignes, ton ${tones.cv}), (2) 5 bullets de compétences clés adaptés au poste.
+Données — Nom: ${name} | Poste visé: ${poste} | Expériences: ${exp} | Compétences: ${skills}${desc ? ' | Descriptif du poste: ' + desc : ''}.
+Adapte le vocabulaire et les mots-clés au secteur du poste visé. Réponds directement en français.`;
     } else {
       const name   = document.getElementById('l-name').value  || 'Candidat';
       const poste  = document.getElementById('l-poste').value || 'Chef de Mission';
       const org    = document.getElementById('l-org').value   || "l'organisation";
       const pays   = document.getElementById('l-pays').value  || '';
       const atouts = document.getElementById('l-atouts').value|| 'Expérience terrain';
-      prompt = `Tu es expert en lettres de motivation pour le secteur humanitaire. Génère une lettre complète (ton ${tones.lettre}) : objet en tête, 3 paragraphes (accroche → valeur ajoutée → conclusion), formule de politesse. Données — ${name} | Poste: ${poste} | Org: ${org} | Pays: ${pays} | Atouts: ${atouts}. Réponds directement en français.`;
+      const desc   = document.getElementById('l-desc').value  || '';
+      prompt = `Tu es expert en lettres de motivation tous secteurs confondus. Génère une lettre complète (ton ${tones.lettre}) : objet en tête, 3 paragraphes (accroche forte → valeur ajoutée → conclusion engagée), formule de politesse adaptée.
+Données — ${name} | Poste: ${poste} | Org: ${org} | Contexte: ${pays} | Atouts: ${atouts}${desc ? ' | Descriptif du poste: ' + desc : ''}.
+Adapte le vocabulaire et les arguments au secteur et aux missions décrites. Réponds directement en français.`;
     }
 
     try {
